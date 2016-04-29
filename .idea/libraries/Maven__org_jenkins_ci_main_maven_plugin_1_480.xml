@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: org.jenkins-ci.main:maven-plugin:1.480">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/jenkins-ci/main/maven-plugin/1.480/maven-plugin-1.480.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/org/jenkins-ci/main/maven-plugin/1.480/maven-plugin-1.480-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/jenkins-ci/main/maven-plugin/1.480/maven-plugin-1.480-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
