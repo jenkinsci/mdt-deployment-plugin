@@ -210,7 +210,7 @@ public class MdtPublishAction extends Notifier {
 
     @Override
     public BuildStepMonitor getRequiredMonitorService() {
-        return BuildStepMonitor.NONE;
+        return BuildStepMonitor.BUILD;
     }
 
     @Override
@@ -267,6 +267,6 @@ public class MdtPublishAction extends Notifier {
         }
     }
 
-    private static final Logger LOGGER = Logger.getLogger(JobPropertyImpl.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(MdtPublishAction.class.getName());
 
 }

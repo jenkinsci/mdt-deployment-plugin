@@ -1,7 +1,14 @@
-<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
-    <f:section title="${%MDT Deploy Plugin}" name="mdt-deploy">
-        <f:entry title="Application api Key" field="apiKey">
-            <f:checkbox />
-        </f:entry>
-    </f:section>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form">
+    <l:layout>
+        <st:include it="${it.build}" page="sidepanel.jelly"/>
+        <l:main-panel>
+            <h1>${it.displayName}</h1>
+            <h2>Deploy Build #${it.buildNumber} on ${it.getMdtServer}?</h2>
+            <form method="post" action="deploy">
+                <f:submit value="${%Deploy}"/>
+            </form>
+            <h2></h2>
+
+        </l:main-panel>
+    </l:layout>
 </j:jelly>

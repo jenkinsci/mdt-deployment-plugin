@@ -11,7 +11,7 @@
     </parent>
 
     <groupId>mdt-deploy</groupId>
-    <artifactId>plugin</artifactId>
+    <artifactId>mdt-deploy</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>hpi</packaging>
 

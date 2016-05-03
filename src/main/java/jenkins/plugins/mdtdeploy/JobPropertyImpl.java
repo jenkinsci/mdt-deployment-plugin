@@ -64,7 +64,7 @@ public final class JobPropertyImpl extends JobProperty<AbstractProject<?,?>> {
     }
 
     private JobPropertyImpl(StaplerRequest req, JSONObject json) throws Descriptor.FormException, IOException {
-        LOGGER.log(Level.ALL,"JobPropertyImpl");
+        LOGGER.log(Level.ALL,"JobPropertyImpl"+ json.toString());
         if(json.has("mdtInfos"))
             json = json.getJSONObject("mdtInfos");
         try {
@@ -73,6 +73,14 @@ public final class JobPropertyImpl extends JobProperty<AbstractProject<?,?>> {
         } catch (Failure f) {
             throw new Descriptor.FormException(f.getMessage(),"");
         }
+    }
+
+    @Override
+    public boolean prebuild(AbstractBuild<?,?> build, BuildListener listener) {
+        //DescriptorImpl descriptor = getDescriptor();
+
+        build.addAction(new MdtBuildAction(build));
+        return true;
     }
 
     @Extension
@@ -92,6 +100,16 @@ public final class JobPropertyImpl extends JobProperty<AbstractProject<?,?>> {
         @Override
         public boolean isApplicable(Class<? extends Job> jobType) {
             return AbstractProject.class.isAssignableFrom(jobType);
+        }
+
+        @Override
+        public boolean configure(StaplerRequest req, net.sf.json.JSONObject json) throws FormException {
+            LOGGER.log(Level.ALL,"configure" + json.toString());
+            req.bindJSON(this, json.getJSONObject("mdt-deploy"));
+
+            save();
+
+            return true;
         }
 
         @Override
