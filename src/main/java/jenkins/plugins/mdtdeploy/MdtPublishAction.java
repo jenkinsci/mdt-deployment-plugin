@@ -1,11 +1,7 @@
 package jenkins.plugins.mdtdeploy;
 
-import com.squareup.okhttp.Headers;
-import com.squareup.okhttp.MultipartBuilder;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.RequestBody;
-import com.squareup.okhttp.Response;
+import com.squareup.okhttp.*;
+import org.apache.commons.lang.NotImplementedException;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -21,6 +17,7 @@ import hudson.util.FormValidation;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +28,7 @@ import java.util.logging.Logger;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
-//import net.sf.json.JSONObject;
+import java.nio.file.Paths;
 
 
 @SuppressWarnings("UnusedDeclaration") // This class will be loaded using its Descriptor.
@@ -42,11 +39,6 @@ public class MdtPublishAction extends Notifier {
     public boolean getDeployOnLatest(){
         return deployOnLatest;
     }
-/*
-    public MdtPublishAction(AbstractBuild<?,?> owner) {
-        assert owner!=null;
-        this.owner = owner;
-    }*/
 
     @DataBoundConstructor
     public MdtPublishAction(boolean deployOnLatest) {
@@ -102,74 +94,118 @@ public class MdtPublishAction extends Notifier {
         JSONParser parser = new JSONParser();
         try {
             Object obj = parser.parse(new FileReader(jsonFile.getFile()));
-           // JSONArray jsonArray = (JSONArray) parser.parse(jsonFile.getFile());
-            if (obj instanceof JSONArray){
-                
+            if (!(obj instanceof JSONArray)){
+                JSONArray array = new JSONArray();
+                array.add(obj);
+                obj = array;
             }
-            JSONObject jsonObject = (JSONObject) obj;
+            JSONArray jsonArray = (JSONArray)obj;
+            for (Object object :  jsonArray) {
+                JSONObject jsonObject = (JSONObject)object;
+                Run.Artifact artifact = findArtifact(jsonFile,jsonObject.get("file").toString(),sortedArtifact);
+                if (artifact !=null){
+                    if(!deleteArtifact(artifact,jsonObject,apiKey,mdtServerHostname,latest,listener)){
+                        listener.getLogger().println("Error deploying artifact "+jsonObject.get("file")+". Aborting!");
+                        return false;
+                    }
 
+                    if(!sendArtifact(artifact,jsonObject,apiKey,mdtServerHostname,latest,listener)){
+                        listener.getLogger().println("Error deploying artifact "+jsonObject.get("file")+". Aborting!");
+                        return false;
+                    }else {
+                        listener.getLogger().println("Artifact "+jsonObject.get("file")+" deployed successfully");
+                    }
+                }else {
+                    listener.getLogger().println("Unable to find artifact "+jsonObject.get("file"));
+                    return false;
+                }
+            }
         }catch (Exception e) {
             e.printStackTrace();
         }
 
         return true;
+    }
 
+    private Run.Artifact findArtifact(Run.Artifact deployFileArtifact, String relativeNameFromDeployFile,HashMap<String,Run.Artifact> sortedArtifacts){
+        LOGGER.log(Level.ALL,"find artifact "+relativeNameFromDeployFile);
+        //compute artifact 'full' relative path
+        String relativePath = Paths.get(deployFileArtifact.relativePath).resolveSibling(relativeNameFromDeployFile).toString();
+        return  sortedArtifacts.get(relativePath);
+    }
 
-        //JSONObject jsonDeploy = JSONObject.fromObject(jsonFile.getFile());
-
-/*
+    private boolean deleteArtifact(Run.Artifact artifact,JSONObject jsonInfo,String apiKey,String mdtServer,boolean latest,BuildListener listener){
         try {
-            MultipartBuilder multipart = new MultipartBuilder();
-            multipart.type(MultipartBuilder.FORM);
-            for (Run.Artifact artifact : artifacts) {
-                multipart.addFormDataPart(artifact.getFileName(), artifact.getFileName(),
-                        RequestBody.create(null, artifact.getFile()));
+            String url = mdtServer;
+            if (latest){
+                url+= "/api/in/v1/artifacts/"+apiKey+"/last/"+ jsonInfo.get("name");
+            }else {
+                url += "/api/in/v1/artifacts/"+apiKey+"/"+ jsonInfo.get("branch")+"/"+ jsonInfo.get("version")+"/"+ jsonInfo.get("name");
             }
-
-            OkHttpClient client = new OkHttpClient();
-            client.setConnectTimeout(30, TimeUnit.SECONDS);
-            client.setReadTimeout(60, TimeUnit.SECONDS);
-
-            Request.Builder builder = new Request.Builder();
-            builder.url(url);
-            builder.header("Job-Name", build.getProject().getName());
-            builder.header("Build-Number", String.valueOf(build.getNumber()));
-            builder.header("Build-Timestamp", String.valueOf(build.getTimeInMillis()));
-            if (headers != null && headers.length() > 0) {
-                String[] lines = headers.split("\r?\n");
-                for (String line : lines) {
-                    int index = line.indexOf(':');
-                    builder.header(line.substring(0, index).trim(), line.substring(index + 1).trim());
-                }
-            }
-            builder.post(multipart.build());
-
-            Request request = builder.build();
-            listener.getLogger().println(String.format("---> POST %s", url));
-            listener.getLogger().println(request.headers());
-
-            long start = System.nanoTime();
-            Response response = client.newCall(request).execute();
-            long time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
-
-            listener.getLogger()
-                    .println(String.format("<--- %s %s (%sms)", response.code(), response.message(), time));
-            listener.getLogger().println(response.body().string());
+            return sendRequest(url,"DELETE",null, Arrays.asList(404,200),listener);
         } catch (Exception e) {
             e.printStackTrace(listener.getLogger());
         }
+        return false;
+    }
 
-*/
+    private boolean sendArtifact(Run.Artifact artifact,JSONObject jsonInfo,String apiKey,String mdtServer,boolean latest,BuildListener listener){
+        try {
+            String url = mdtServer;
+            if (latest){
+                url+= "/api/in/v1/artifacts/"+apiKey+"/last/"+ jsonInfo.get("name");
+            }else {
+                url += "/api/in/v1/artifacts/"+apiKey+"/"+ jsonInfo.get("branch")+"/"+ jsonInfo.get("version")+"/"+ jsonInfo.get("name");
+            }
+            MultipartBuilder multipart = new MultipartBuilder();
+            multipart.type(MultipartBuilder.FORM);
+            //multipart.type(MediaType.parse("multipart/form-data;charset=UTF-8"));
+            multipart.addFormDataPart("artifactFile", artifact.getFileName(),
+                    RequestBody.create(MediaType.parse("application/octet-stream"), artifact.getFile()));
 
-        listener.getLogger().println("MDT server : "+descriptor.url);
-        listener.getLogger().println("latest  : "+deployOnLatest);
+            return sendRequest(url,"POST",multipart, Arrays.asList(200),listener);
 
+        } catch (Exception e) {
+            e.printStackTrace(listener.getLogger());
+        }
+        return false;
+    }
 
-        listener.getLogger().println("api key  : "+pp.apiKey);
-        listener.getLogger().println("deployFile  : "+pp.deployFile);
+    private boolean sendRequest(String url,String method,MultipartBuilder multipart,List<Integer> acceptedResturnCode,BuildListener listener) throws IOException{
+        OkHttpClient client = new OkHttpClient();
+        client.setConnectTimeout(30, TimeUnit.SECONDS);
+        client.setReadTimeout(60, TimeUnit.SECONDS);
 
-        listener.getLogger().println("MDT Deploy: Skipping because of Not implemented");
-        return true;
+        Request.Builder builder = new Request.Builder();
+        builder.url(url);
+
+        switch (method){
+            case "DELETE":
+                builder.delete();
+                break;
+            case "POST":
+                builder.post(multipart.build());
+                break;
+            default:
+                throw  new NotImplementedException();
+        }
+
+        Request request = builder.build();
+        listener.getLogger().println(String.format("---> %s Artifact %s", method,url));
+
+        long start = System.nanoTime();
+        Response response = client.newCall(request).execute();
+        long time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+
+        listener.getLogger()
+                .println(String.format("<--- %s %s (%sms)", response.code(), response.message(), time));
+
+        if (acceptedResturnCode.contains(response.code())){
+            return true;
+        }else {
+            listener.getLogger().println(response.body().string());
+        }
+        return false;
     }
 
     @Override

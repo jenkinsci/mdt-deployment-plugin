@@ -26,7 +26,7 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="MDT-Jenkins-Plugin" target="1.6" />
+      <module name="MDT-Jenkins-Plugin" target="1.7" />
     </bytecodeTargetLevel>
   </component>
 </project>
