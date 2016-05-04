@@ -3,12 +3,12 @@
         <st:include it="${it.build}" page="sidepanel.jelly"/>
         <l:main-panel>
             <h1>${it.displayName}</h1>
-            <h2>Deploy Build #${it.buildNumber} on ${it.getMdtServer}?</h2>
+            <h2>Deploy Build #${it.buildNumber} on ${it.mdtServer}?</h2>
             <form method="post" action="deploy">
                 <f:submit value="${%Deploy}"/>
             </form>
-            <h2></h2>
-
+            <h3>Last Deploy log:</h3>
+            ${it.lastDeployLog}
         </l:main-panel>
     </l:layout>
 </j:jelly>

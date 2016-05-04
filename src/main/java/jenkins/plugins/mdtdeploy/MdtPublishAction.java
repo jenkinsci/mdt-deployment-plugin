@@ -47,12 +47,77 @@ public class MdtPublishAction extends Notifier {
         LOGGER.log(Level.ALL,"MdtPublishAction");
     }
 
+    public boolean performDeploy(String mdtServerHostname,String apiKey,String deployFilename,List<Run<? , ?>.Artifact> artifacts,TaskListener listener){
+        if (mdtServerHostname == null || mdtServerHostname.length() == 0){
+            listener.getLogger().println("MDT Deploy: MDT server not set, check your config !");
+            return  false;
+        }
+        if (apiKey == null || apiKey.length() == 0){
+            listener.getLogger().println("MDT Deploy: API key, check your config !");
+            return  false;
+        }
+        if (deployFilename == null || deployFilename.length() == 0){
+            listener.getLogger().println("MDT Deploy: Deployment json file, check your config !");
+            return  false;
+        }
+
+        boolean latest = deployOnLatest;
+
+        //sort artifact by path
+        HashMap<String,Run.Artifact> sortedArtifact = new HashMap<String,Run.Artifact>();
+        for (Run.Artifact artifact :  artifacts) {
+            sortedArtifact.put(artifact.relativePath,artifact);
+        }
+
+        //load deploy file
+        Run.Artifact jsonFile = sortedArtifact.get(deployFilename);
+        if (jsonFile == null){
+            listener.getLogger().println("MDT Deploy: Deployment json file not found ("+deployFilename+")");
+            return  true;
+        }
+
+        JSONParser parser = new JSONParser();
+        try {
+            Object obj = parser.parse(new FileReader(jsonFile.getFile()));
+            if (!(obj instanceof JSONArray)){
+                JSONArray array = new JSONArray();
+                array.add(obj);
+                obj = array;
+            }
+            JSONArray jsonArray = (JSONArray)obj;
+            for (Object object :  jsonArray) {
+                JSONObject jsonObject = (JSONObject)object;
+                Run.Artifact artifact = findArtifact(jsonFile,jsonObject.get("file").toString(),sortedArtifact);
+                if (artifact !=null){
+                    if(!deleteArtifact(artifact,jsonObject,apiKey,mdtServerHostname,latest,listener)){
+                        listener.getLogger().println("Error deploying artifact "+jsonObject.get("file")+". Aborting!");
+                        return false;
+                    }
+
+                    if(!sendArtifact(artifact,jsonObject,apiKey,mdtServerHostname,latest,listener)){
+                        listener.getLogger().println("Error deploying artifact "+jsonObject.get("file")+". Aborting!");
+                        return false;
+                    }else {
+                        listener.getLogger().println("Artifact "+jsonObject.get("file")+" deployed successfully");
+                    }
+                }else {
+                    listener.getLogger().println("Unable to find artifact "+jsonObject.get("file"));
+                    return false;
+                }
+            }
+        }catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return true;
+    }
+
     @SuppressWarnings({"unchecked", "deprecation"})
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
-        Descriptor descriptor = getDescriptor();
+       /* Descriptor descriptor = getDescriptor();
 
-        String mdtServerHostname = descriptor.url;
+        String mdtServerHostname = descriptor.url;*/
         boolean latest = deployOnLatest;
         String apiKey = null;
         String deployFile = null;
@@ -63,18 +128,24 @@ public class MdtPublishAction extends Notifier {
             apiKey = pp.apiKey;
             deployFile = pp.deployFile;
         }
+        GlobalConfigurationMdtDeploy globalConfig = GlobalConfigurationMdtDeploy.get();
+        String mdtServerHostname = globalConfig.getUrl();
+
+        return performDeploy(mdtServerHostname,apiKey,deployFile,build.getArtifacts(),listener);
+
+/*
 
         if (mdtServerHostname == null || mdtServerHostname.length() == 0){
             listener.getLogger().println("MDT Deploy: MDT server not set, check your config !");
-            return  true;
+            return  false;
         }
         if (apiKey == null || apiKey.length() == 0){
             listener.getLogger().println("MDT Deploy: API key, check your config !");
-            return  true;
+            return  false;
         }
         if (deployFile == null || deployFile.length() == 0){
             listener.getLogger().println("MDT Deploy: Deployment json file, check your config !");
-            return  true;
+            return  false;
         }
 
         List<Run.Artifact> artifacts = build.getArtifacts();
@@ -124,7 +195,7 @@ public class MdtPublishAction extends Notifier {
             e.printStackTrace();
         }
 
-        return true;
+        return true;*/
     }
 
     private Run.Artifact findArtifact(Run.Artifact deployFileArtifact, String relativeNameFromDeployFile,HashMap<String,Run.Artifact> sortedArtifacts){
@@ -134,7 +205,7 @@ public class MdtPublishAction extends Notifier {
         return  sortedArtifacts.get(relativePath);
     }
 
-    private boolean deleteArtifact(Run.Artifact artifact,JSONObject jsonInfo,String apiKey,String mdtServer,boolean latest,BuildListener listener){
+    private boolean deleteArtifact(Run.Artifact artifact,JSONObject jsonInfo,String apiKey,String mdtServer,boolean latest,TaskListener listener){
         try {
             String url = mdtServer;
             if (latest){
@@ -149,7 +220,7 @@ public class MdtPublishAction extends Notifier {
         return false;
     }
 
-    private boolean sendArtifact(Run.Artifact artifact,JSONObject jsonInfo,String apiKey,String mdtServer,boolean latest,BuildListener listener){
+    private boolean sendArtifact(Run.Artifact artifact,JSONObject jsonInfo,String apiKey,String mdtServer,boolean latest,TaskListener listener){
         try {
             String url = mdtServer;
             if (latest){
@@ -171,7 +242,7 @@ public class MdtPublishAction extends Notifier {
         return false;
     }
 
-    private boolean sendRequest(String url,String method,MultipartBuilder multipart,List<Integer> acceptedResturnCode,BuildListener listener) throws IOException{
+    private boolean sendRequest(String url,String method,MultipartBuilder multipart,List<Integer> acceptedResturnCode,TaskListener listener) throws IOException{
         OkHttpClient client = new OkHttpClient();
         client.setConnectTimeout(30, TimeUnit.SECONDS);
         client.setReadTimeout(60, TimeUnit.SECONDS);

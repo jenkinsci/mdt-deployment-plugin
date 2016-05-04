@@ -1,11 +1,15 @@
 package jenkins.plugins.mdtdeploy;
 
 import hudson.model.*;
-
+import java.io.StringWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import hudson.util.ByteArrayOutputStream2;
+import hudson.util.StreamTaskListener;
 
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
@@ -18,6 +22,7 @@ public class MdtBuildAction implements Action {
     private String message;
     private String mdtServer;
     private AbstractBuild<?, ?> build;
+    private String lastDeployLog;
 
     @Override
     public String getIconFileName() {
@@ -45,6 +50,18 @@ public class MdtBuildAction implements Action {
         return this.build.number;
     }
 
+    public String getLastDeployLog(){
+        return  lastDeployLog;
+        /*
+        if (listener != null) {
+            String log = listener.getLogger().toString();
+            if (log != null){
+                return log;
+            }
+        }
+        return "";*/
+    }
+
     public AbstractBuild<?, ?> getBuild() {
         return build;
     }
@@ -53,19 +70,40 @@ public class MdtBuildAction implements Action {
         LOGGER.log(Level.ALL,"Deploy started ..");
 
         GlobalConfigurationMdtDeploy globalConfig = GlobalConfigurationMdtDeploy.get();
-       /* MdtPublishAction publishAction = (MdtPublishAction) build.getProject().getActions(MdtPublishAction.class);
-
-        publishAction.deployOnLatest = false;
-        publishAction.perform(build,null,listener);*/
-
         JobPropertyImpl pp = (JobPropertyImpl) build.getProject().getProperty(JobPropertyImpl.class);
-        List<?> artifacts = build.getArtifacts();
+
+        List<Run<?,?>.Artifact> artifacts = (List<Run<? , ?>.Artifact>) build.getArtifacts();
+
+        MdtPublishAction publishAction = new MdtPublishAction(false);// (MdtPublishAction) build.getProject().getActions(MdtPublishAction.class);
+
+        StreamTaskListener listener = null;
+        StringWriter writer = new StringWriter();
+        try {
+            listener = new StreamTaskListener(writer);
+        }catch(IOException e){
+            listener = StreamTaskListener.fromStdout();
+        }
+
+        publishAction.performDeploy(mdtServer,pp.apiKey,pp.deployFile,artifacts,listener);
+        listener.getLogger().flush();
+        lastDeployLog = writer.getBuffer().toString();
+
+        //publishAction.deployOnLatest = false;
+        //publishAction.perform2(build,null,StreamTaskListener.fromStdout());
+
+
+        //List<?> artifacts = build.getArtifacts();
         return HttpResponses.redirectToDot();
+
+
     }
 
     MdtBuildAction(final AbstractBuild<?, ?> build)
     {
         this.build = build;
+        GlobalConfigurationMdtDeploy globalConfig = GlobalConfigurationMdtDeploy.get();
+        this.mdtServer = globalConfig.getUrl();
+
     }
     private static final Logger LOGGER = Logger.getLogger(MdtBuildAction.class.getName());
 }
