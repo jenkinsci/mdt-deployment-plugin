@@ -1,14 +1,34 @@
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form">
-    <l:layout>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form" xmlns:t="/lib/hudson" >
+    <l:layout norefresh="true">
         <st:include it="${it.build}" page="sidepanel.jelly"/>
         <l:main-panel>
             <h1>${it.displayName}</h1>
             <h2>Deploy Build #${it.buildNumber} on ${it.mdtServer}?</h2>
-            <form method="post" action="deploy">
-                <f:submit value="${%Deploy}"/>
-            </form>
-            <h3>Last Deploy log:</h3>
-            ${it.lastDeployLog}
+            <j:choose>
+                <!-- Do progressive console output -->
+                <j:when test="${it.isDeploying}">
+                    <h3>Deploy log:</h3>
+                    <pre id="out" />
+                    <div id="spinner">
+                        <img src="images/spinner.gif" alt="" />
+                    </div>
+                    <t:progressiveText href="progressiveLog" idref="out" spinner="spinner"  />
+                </j:when>
+                <!-- output is completed now. -->
+                <j:otherwise>
+                    <form method="post" action="deploy">
+                        <f:submit value="${%Deploy}"/>
+                    </form>
+                    <h3>Last deploy log:</h3>
+                    <pre>
+                        <st:getOutput var="output" />
+                        <j:whitespace>${it.writeLogTo(output)}</j:whitespace>
+                    </pre>
+                </j:otherwise>
+            </j:choose>
+
+
+
         </l:main-panel>
     </l:layout>
 </j:jelly>
