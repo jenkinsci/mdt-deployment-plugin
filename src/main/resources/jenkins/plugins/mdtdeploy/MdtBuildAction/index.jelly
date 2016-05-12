@@ -3,14 +3,14 @@
         <st:include it="${it.build}" page="sidepanel.jelly"/>
         <l:main-panel>
             <h1>${it.displayName}</h1>
-            <h2>Deploy Build #${it.buildNumber} on ${it.mdtServer}?</h2>
+            <h2>Deploy Build #${it.buildNumber} on ${it.mdtServer} ?</h2>
             <j:choose>
                 <!-- Do progressive console output -->
                 <j:when test="${it.isDeploying}">
                     <h3>Deploy log:</h3>
                     <pre id="out" />
                     <div id="spinner">
-                        <img src="images/spinner.gif" alt="" />
+                        <img src="${imagesURL}/spinner.gif" alt="" />
                     </div>
                     <t:progressiveText href="progressiveLog" idref="out" spinner="spinner"  />
                 </j:when>
@@ -26,9 +26,6 @@
                     </pre>
                 </j:otherwise>
             </j:choose>
-
-
-
         </l:main-panel>
     </l:layout>
 </j:jelly>

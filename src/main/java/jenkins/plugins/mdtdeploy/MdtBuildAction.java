@@ -39,18 +39,70 @@ import org.kohsuke.stapler.StaplerResponse;
  * Created by rgroult on 02/05/16.
  */
 public class MdtBuildAction implements Action {
+    public enum Status {
+        NEW,
+        SUCCESS,
+        FAILED
+    }
 
-    private String message;
     private String mdtServer;
+    private String apiKey;
+    private String deployArtifactFilename;
     private AbstractBuild<?, ?> build;
-    private String lastDeployLog;
     private FutureTask<Boolean> currentDeployTask;
-    private StringWriter logWriter = new StringWriter();
+    private StringWriter logWriter;
     transient private TaskListener actionListener = null ;
+    private Status status;
+
+    MdtBuildAction(final AbstractBuild<?, ?> build)
+    {
+        this.build = build;
+        GlobalConfigurationMdtDeploy globalConfig = GlobalConfigurationMdtDeploy.get();
+        this.mdtServer = globalConfig.getUrl();
+        JobPropertyImpl pp = (JobPropertyImpl) build.getProject().getProperty(JobPropertyImpl.class);
+        this.apiKey = pp.apiKey;
+        this.deployArtifactFilename = pp.deployFile;
+        this.logWriter =  new StringWriter();
+        this.status = Status.NEW;
+    }
 
     @Override
     public String getIconFileName() {
-        return "logo_mdt.png";
+        updateStatusIfNeeded();
+        switch (status){
+            case SUCCESS:
+                return "/plugin/mdt-deploy/images/logo_mdt_success.png";
+            case FAILED:
+                return "/plugin/mdt-deploy/images/logo_mdt_failed.png";
+            default:
+                return "/plugin/mdt-deploy/images/logo_mdt.png";
+        }
+    }
+
+    private void updateStatusIfNeeded(){
+        if (this.currentDeployTask != null && this.currentDeployTask.isDone()){
+            try {
+                if (currentDeployTask.get()) {
+                    status = Status.SUCCESS;
+                } else {
+                    status = Status.FAILED;
+                }
+                this.currentDeployTask = null;
+            }catch (Exception e){
+                status = Status.FAILED;
+            }
+        }
+    }
+
+    private void deployEnded(boolean isSucess){
+        if (isSucess) {
+            status = Status.SUCCESS;
+        } else {
+            status = Status.FAILED;
+        }
+    }
+    public boolean isLogUpdated(){
+        return getIsDeploying();
     }
 
     @Override
@@ -66,12 +118,13 @@ public class MdtBuildAction implements Action {
     public String getMdtServer(){
         return mdtServer;
     }
-    public String getMessage() {
-        return this.message;
-    }
 
     public int getBuildNumber() {
         return this.build.number;
+    }
+
+    public Status getStatus(){
+        return status;
     }
 
     public boolean getIsDeploying(){
@@ -98,14 +151,7 @@ public class MdtBuildAction implements Action {
         return build;
     }
 
-/*
-    private Future<Boolean> deploy(MdtPublishAction action,String server,String apiKey,String deployFile,TaskListener listener){
-        List<Run<?,?>.Artifact> artifacts = (List<Run<? , ?>.Artifact>) build.getArtifacts();
-        return new AsyncResult<>(action.performDeploy(mdtServer,apiKey,deployFile,artifacts,listener));
-    }
-*/
     public void doProgressiveLog(StaplerRequest req, StaplerResponse rsp) throws IOException{
-        //LOGGER.log(Level.SEVERE,"doProgressiveLog ..");
         if (actionListener != null ){
             actionListener.getLogger().flush();
         }
@@ -114,12 +160,12 @@ public class MdtBuildAction implements Action {
 
         int start = 0;
         String s = req.getParameter("start");
-        LOGGER.log(Level.SEVERE,"params:"+req.getParameterMap());
+        //LOGGER.log(Level.ALL,"params:"+req.getParameterMap());
         if(s != null) {
             try{
                 start = Integer.parseInt(s);
             }catch(Exception e){}
-            LOGGER.log(Level.SEVERE,"start .. "+start+ " s:"+s);
+            //LOGGER.log(Level.ALL,"start .. "+start+ " s:"+s);
         }
         String currentLog = getLastDeployLog();
         int length = currentLog.length();
@@ -146,24 +192,17 @@ public class MdtBuildAction implements Action {
         }
 
         logWriter.getBuffer().setLength(0);
+        status = Status.NEW;
         ExecutorService executor = Executors.newFixedThreadPool(1);
-        this.currentDeployTask = new FutureTask<Boolean>(new DeployTask(mdtServer,build,actionListener));
-        actionListener.getLogger().println("Starting Deploy ...");
+        this.currentDeployTask = new FutureTask<Boolean>(new DeployTask(mdtServer,apiKey,deployArtifactFilename,build,actionListener,this));
+        actionListener.getLogger().println("<b>Starting Deploy ...</b>");
         executor.execute(this.currentDeployTask);
 
         return HttpResponses.redirectToDot();
     }
 
-    MdtBuildAction(final AbstractBuild<?, ?> build)
-    {
-        this.build = build;
-        GlobalConfigurationMdtDeploy globalConfig = GlobalConfigurationMdtDeploy.get();
-        this.mdtServer = globalConfig.getUrl();
-    }
 
-    public boolean isLogUpdated(){
-        return getIsDeploying();
-    }
+
 
     public void writeLogTo(XMLOutput out) throws IOException {
 
@@ -175,34 +214,37 @@ public class MdtBuildAction implements Action {
 
     static public final class  DeployTask implements  Callable<Boolean> {
         String mdtServer;
+        String apiKey;
+        String deployArtifactFilename;
         AbstractBuild<?, ?> build;
         TaskListener actionListener;
-        JobPropertyImpl jobProperty;
         List<Run<?,?>.Artifact> artifacts;
+        MdtBuildAction parent;
 
-        public DeployTask(String mdtServer,AbstractBuild<?, ?> build,TaskListener listener ){
+        public DeployTask(String mdtServer,String apiKey, String deployArtifactFilename, AbstractBuild<?, ?> build,TaskListener listener,MdtBuildAction parent){
             this.build = build;
             this.mdtServer = mdtServer;
             this.actionListener = listener;
-            jobProperty = (JobPropertyImpl) build.getProject().getProperty(JobPropertyImpl.class);
+            this.parent = parent;
+            this.apiKey = apiKey;
+            this.deployArtifactFilename = deployArtifactFilename;
             artifacts = (List<Run<? , ?>.Artifact>) build.getArtifacts();
         }
 
         public Boolean call() {
             final MdtPublishAction publishAction = new MdtPublishAction(false);
-            LOGGER.log(Level.SEVERE,"start Call");
-            Boolean result =  publishAction.performDeploy(mdtServer,jobProperty.apiKey,jobProperty.deployFile,artifacts,actionListener);
-            LOGGER.log(Level.SEVERE,"End Call");
+            //LOGGER.log(Level.SEVERE,"start Call");
+            Boolean result =  publishAction.performDeploy(mdtServer,apiKey,deployArtifactFilename,artifacts,actionListener);
+            //LOGGER.log(Level.SEVERE,"End Call");
             actionListener.getLogger().flush();
+            if (result){
+                actionListener.getLogger().println("<b>Deployment done successfully<b/>");
+            }else {
+                actionListener.getLogger().println("<b>Deployment Failed !<b/>");
+            }
+            parent.deployEnded(result);
             return result;
         }
-
-
-/*
-            JobPropertyImpl jobProperty = (JobPropertyImpl) build.getProject().getProperty(JobPropertyImpl.class);
-            List<Run<?,?>.Artifact> artifacts = (List<Run<? , ?>.Artifact>) build.getArtifacts();
-            TaskListener actionListener =listener ;*/
-
     }
 
 }

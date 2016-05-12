@@ -1,11 +1,12 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
-    <f:optionalBlock name="mdtInfos" title="MDT Deployment" checked="${instance.enable}">
+    <f:optionalBlock name="mdtInfos" title="Mobile App Distribution Tool Deployment" checked="${instance.enable}">
         <f:block><div style="padding-left:2em">
+            <b>NB: Keep all needed files (deployment file and Applications release) as artifacts to be able to deploy on MDT</b>
             <f:entry title="Application api Key" field="apiKey">
                 <f:textbox />
             </f:entry>
-            <f:entry title="json Deployment file" field="deployFile">
+            <f:entry title="Artifact JSON Deployment Filename" field="deployFile">
                 <f:textbox />
             </f:entry>
         </div></f:block>

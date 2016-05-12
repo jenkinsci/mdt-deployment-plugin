@@ -98,7 +98,7 @@ public class MdtPublishAction extends Notifier {
                         listener.getLogger().println("Error deploying artifact "+jsonObject.get("file")+". Aborting!");
                         return false;
                     }else {
-                        listener.getLogger().println("Artifact "+jsonObject.get("file")+" deployed successfully");
+                        listener.getLogger().println("<b>Artifact "+jsonObject.get("file")+" deployed successfully</b>");
                     }
                 }else {
                     listener.getLogger().println("Unable to find artifact "+jsonObject.get("file"));
