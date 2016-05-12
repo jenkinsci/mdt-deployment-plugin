@@ -10,12 +10,12 @@
         <version>1.480</version>
     </parent>
 
-    <groupId>mdt-deploy</groupId>
-    <artifactId>mdt-deploy</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <groupId>mdt-deployment</groupId>
+    <artifactId>mdt-deployment</artifactId>
+    <version>1.0</version>
     <packaging>hpi</packaging>
 
-    <name>MDT Deploy Plugin</name>
+    <name>MDT Deployment</name>
     <description>Deploy Artifact to Mobile App Distribution Tool server</description>
     <!-- <url>https://wiki.jenkins-ci.org/display/JENKINS/HTTP+POST+Plugin</url> -->
 
