@@ -71,11 +71,11 @@ public class MdtBuildAction implements Action {
         updateStatusIfNeeded();
         switch (status){
             case SUCCESS:
-                return "/plugin/mdt-deploy/images/logo_mdt_success.png";
+                return "/plugin/mdt-deployment/images/logo_mdt_success.png";
             case FAILED:
-                return "/plugin/mdt-deploy/images/logo_mdt_failed.png";
+                return "/plugin/mdt-deployment/images/logo_mdt_failed.png";
             default:
-                return "/plugin/mdt-deploy/images/logo_mdt.png";
+                return "/plugin/mdt-deployment/images/logo_mdt.png";
         }
     }
 

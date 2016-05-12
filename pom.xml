@@ -7,17 +7,15 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>1.480</version>
+        <version>2.6</version>
     </parent>
 
-    <groupId>mdt-deployment</groupId>
     <artifactId>mdt-deployment</artifactId>
-    <version>1.0</version>
+    <version>1.0.0</version>
     <packaging>hpi</packaging>
-
-    <name>MDT Deployment</name>
-    <description>Deploy Artifact to Mobile App Distribution Tool server</description>
-    <!-- <url>https://wiki.jenkins-ci.org/display/JENKINS/HTTP+POST+Plugin</url> -->
+    <name>MDT Deployment Plugin</name>
+    <description>Deploy your mobile applications (Android, iOS) to &lt;a href="https://github.com/rgroult/MobDistTool"&gt;Mobile App Distribution Tool server&lt;/a&gt;</description>
+     <url>https://wiki.jenkins-ci.org/display/JENKINS/MDT+Deploy+Plugin</url>
 
     <properties>
         <maven-release-plugin.version>2.5</maven-release-plugin.version>
