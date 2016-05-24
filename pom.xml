@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>mdt-deployment</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>hpi</packaging>
     <name>MDT Deployment Plugin</name>
     <description>Deploy your mobile applications (Android, iOS) to &lt;a href="https://github.com/rgroult/MobDistTool"&gt;Mobile App Distribution Tool server&lt;/a&gt;</description>
