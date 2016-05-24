@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>1.586</version>
+        <version>1.596.1</version>
     </parent>
 
     <artifactId>mdt-deployment</artifactId>
@@ -24,9 +24,9 @@
     </properties>
 
     <scm>
-        <connection>scm:git:ssh://github.com/jenkinsci/mdt-deployment.git</connection>
-        <developerConnection>scm:git:ssh://git@github.com/jenkinsci/mdt-deployment.git</developerConnection>
-        <url>https://github.com/jenkinsci/mdt-deployment</url>
+        <connection>scm:git:ssh://github.com/jenkinsci/mdt-deployment-plugin.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/jenkinsci/mdt-deployment-plugin.git</developerConnection>
+        <url>https://github.com/jenkinsci/mdt-deployment-plugin</url>
     </scm>
 
     <developers>
@@ -71,7 +71,6 @@
             <artifactId>json-simple</artifactId>
             <version>1.1.1</version>
         </dependency>
-
     </dependencies>
 
     <build>
@@ -85,5 +84,4 @@
             </plugin>
         </plugins>
     </build>
-
 </project>
