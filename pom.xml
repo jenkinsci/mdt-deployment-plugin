@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>mdt-deployment</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.2-SNAPSHOT</version>
     <packaging>hpi</packaging>
     <name>MDT Deployment Plugin</name>
     <description>Deploy your mobile applications (Android, iOS) to &lt;a href="https://github.com/rgroult/MobDistTool"&gt;Mobile App Distribution Tool server&lt;/a&gt;</description>
@@ -31,7 +31,7 @@
     <developers>
         <developer>
             <id>rgroult</id>
-            <name>Rémi Groult</name>
+            <name>R&eacute;mi Groult</name>
             <email>remi.groult@gmail.com</email>
         </developer>
     </developers>

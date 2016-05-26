@@ -33,7 +33,7 @@ import java.nio.file.Paths;
 
 @SuppressWarnings("UnusedDeclaration") // This class will be loaded using its Descriptor.
 public class MdtPublishAction extends Notifier {
-    //public final AbstractBuild<?,?> owner;
+    private static final Result RESULT_MUST_BE_AT_LEAST = Result.UNSTABLE;
     public boolean deployOnLatest;
 
     public boolean getDeployOnLatest(){
@@ -73,7 +73,7 @@ public class MdtPublishAction extends Notifier {
         Run.Artifact jsonFile = sortedArtifact.get(deployFilename);
         if (jsonFile == null){
             listener.getLogger().println("MDT Deploy: Deployment json file not found ("+deployFilename+")");
-            return  true;
+            return  false;
         }
 
         JSONParser parser = new JSONParser();
@@ -115,6 +115,12 @@ public class MdtPublishAction extends Notifier {
     @SuppressWarnings({"unchecked", "deprecation"})
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
+        final Result buildResult = build.getResult();
+        if (buildResult != null && buildResult.isWorseThan(RESULT_MUST_BE_AT_LEAST)) {
+            listener.getLogger().println("build status MUST be as Least UNSTABLE !");
+            return true;
+        }
+
        /* Descriptor descriptor = getDescriptor();
 
         String mdtServerHostname = descriptor.url;*/

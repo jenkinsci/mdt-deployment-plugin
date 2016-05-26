@@ -18,6 +18,11 @@ public class GlobalConfigurationMdtDeploy extends GlobalConfiguration{
     @Override
     public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
         req.bindJSON(this, json.getJSONObject("mdt-deploy"));
+        //check if url ended by '/'
+        if (url.length() > 1 && url.charAt(url.length()-1) == '/'){
+            //remove it
+            url = url.substring(0,url.length()-1);
+        }
         save();
         return true;
     }

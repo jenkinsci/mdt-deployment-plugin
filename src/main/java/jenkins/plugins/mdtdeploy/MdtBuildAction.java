@@ -38,7 +38,7 @@ import org.kohsuke.stapler.StaplerResponse;
 /**
  * Created by rgroult on 02/05/16.
  */
-public class MdtBuildAction implements Action {
+public class MdtBuildAction implements BuildBadgeAction {
     public enum Status {
         NEW,
         SUCCESS,
@@ -64,6 +64,22 @@ public class MdtBuildAction implements Action {
         this.deployArtifactFilename = pp.deployFile;
         this.logWriter =  new StringWriter();
         this.status = Status.NEW;
+    }
+
+    public boolean hasDeployed(){
+        return status!=Status.NEW;
+    }
+
+    public String getBadgeIconFileName() {
+        updateStatusIfNeeded();
+        switch (status){
+            case SUCCESS:
+                return "/plugin/mdt-deployment/images/16*16/logo_mdt_success.png";
+            case FAILED:
+                return "/plugin/mdt-deployment/images/16*16/logo_mdt_failed.png";
+            default:
+                return "/plugin/mdt-deployment/images/16*16/logo_mdt.png";
+        }
     }
 
     @Override
