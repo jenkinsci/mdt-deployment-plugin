@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>mdt-deployment</artifactId>
-    <version>1.0.2-SNAPSHOT</version>
+    <version>1.0.2</version>
     <packaging>hpi</packaging>
     <name>MDT Deployment Plugin</name>
     <description>Deploy your mobile applications (Android, iOS) to &lt;a href="https://github.com/rgroult/MobDistTool"&gt;Mobile App Distribution Tool server&lt;/a&gt;</description>
@@ -25,13 +25,13 @@
         <connection>scm:git:ssh://github.com/jenkinsci/mdt-deployment-plugin.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/jenkinsci/mdt-deployment-plugin.git</developerConnection>
         <url>https://github.com/jenkinsci/mdt-deployment-plugin</url>
-      <tag>HEAD</tag>
+      <tag>mdt-deployment-1.0.2</tag>
   </scm>
 
     <developers>
         <developer>
             <id>rgroult</id>
-            <name>R&eacute;mi Groult</name>
+            <name>Rémi Groult</name>
             <email>remi.groult@gmail.com</email>
         </developer>
     </developers>
