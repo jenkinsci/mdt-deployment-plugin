@@ -32,12 +32,12 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import java.nio.file.Paths;
+import java.nio.file.Path;
 
 
 @SuppressWarnings("UnusedDeclaration") // This class will be loaded using its Descriptor.
 public class MdtPublishAction extends Notifier {
     private boolean deployOnLatest;
-    private GlobalConfigurationMdtDeploy  globalConfig;
     private transient String deployFilePath;
     private transient String apiKey;
     private transient String mdtServerHostname;
@@ -49,7 +49,6 @@ public class MdtPublishAction extends Notifier {
     @DataBoundConstructor
     public MdtPublishAction(boolean deployOnLatest) {
         this.deployOnLatest = deployOnLatest;
-        globalConfig = GlobalConfigurationMdtDeploy.get();
         LOGGER.log(Level.ALL,"MdtPublishAction");
     }
 
@@ -60,9 +59,13 @@ public class MdtPublishAction extends Notifier {
         }
     }
 
+    String normalizePath(String path){
+        return Paths.get(path).toString();
+    }
+
 
     public boolean performDeploy(List<Run<? , ?>.Artifact> artifacts,TaskListener listener){
-        mdtServerHostname = globalConfig.getUrl();
+        mdtServerHostname = GlobalConfigurationMdtDeploy.get().getUrl();
         mdtServerHostname = mdtServerHostname == null ? "" : mdtServerHostname.trim();
 
         apiKey = apiKey == null ? "" : apiKey.trim();
@@ -82,12 +85,12 @@ public class MdtPublishAction extends Notifier {
         }
 
         boolean latest = deployOnLatest;
-        String deployFilename = Paths.get(deployFilePath).toString();
+        String deployFilename = normalizePath(deployFilePath);
 
         //sort artifact by path
         HashMap<String,Run.Artifact> sortedArtifact = new HashMap<String,Run.Artifact>();
         for (Run.Artifact artifact :  artifacts) {
-            sortedArtifact.put(Paths.get(artifact.relativePath).toString(),artifact);
+            sortedArtifact.put(normalizePath(artifact.relativePath),artifact);
         }
 
         //load deploy file
@@ -137,31 +140,28 @@ public class MdtPublishAction extends Notifier {
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
         configureDeployInfos((JobPropertyImpl) build.getProject().getProperty(JobPropertyImpl.class));
-       /* Descriptor descriptor = getDescriptor();
-
-        String mdtServerHostname = descriptor.url;*/
         boolean latest = deployOnLatest;
-    /*    String apiKey = null;
-        String deployFile = null;
-
-       JobPropertyImpl pp = (JobPropertyImpl) build.getProject().getProperty(JobPropertyImpl.class);
-
-        if (pp!=null){
-            apiKey = pp.apiKey;
-            deployFile = pp.deployFile;
-        }
-        GlobalConfigurationMdtDeploy globalConfig = GlobalConfigurationMdtDeploy.get();
-        String mdtServerHostname = globalConfig.getUrl();
-        boolean checkSSL = globalConfig.getDisableCheckSSL();*/
-
+        
         return performDeploy(build.getArtifacts(),listener);
     }
 
     private Run.Artifact findArtifact(Run.Artifact deployFileArtifact, String relativeNameFromDeployFile,HashMap<String,Run.Artifact> sortedArtifacts){
-        LOGGER.log(Level.ALL,"find artifact "+relativeNameFromDeployFile);
-        //compute artifact 'full' relative path
-        String relativePath = Paths.get(deployFileArtifact.relativePath).resolveSibling(relativeNameFromDeployFile).toString();
-        return  sortedArtifacts.get(relativePath);
+        Path  pathFromDeployFile = Paths.get(relativeNameFromDeployFile);
+        if (pathFromDeployFile.isAbsolute()){
+            //find artifact by full path
+            for (Run.Artifact artifact :  sortedArtifacts.values()) {
+                if (artifact.getFile().getAbsolutePath() == pathFromDeployFile.toString()) {
+                    return artifact;
+                }
+            }
+            return null;
+        }else {
+            relativeNameFromDeployFile = normalizePath(relativeNameFromDeployFile);
+            //compute artifact 'full' relative path
+            String relativePath = Paths.get(deployFileArtifact.relativePath).resolveSibling(relativeNameFromDeployFile).toString();
+            LOGGER.log(Level.ALL,"find artifact "+relativePath);
+            return  sortedArtifacts.get(relativePath);
+        }
     }
 
     private boolean deleteArtifact(Run.Artifact artifact,JSONObject jsonInfo,boolean latest,TaskListener listener){

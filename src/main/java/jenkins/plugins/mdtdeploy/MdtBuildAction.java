@@ -66,6 +66,22 @@ public class MdtBuildAction implements Action {
         this.status = Status.NEW;
     }
 
+    public boolean hasDeployed(){
+        return status!=Status.NEW;
+    }
+
+    public String getBadgeIconFileName() {
+        updateStatusIfNeeded();
+        switch (status){
+            case SUCCESS:
+                return "/plugin/mdt-deployment/images/16x16/logo_mdt_success.png";
+            case FAILED:
+                return "/plugin/mdt-deployment/images/16x16/logo_mdt_failed.png";
+            default:
+                return "/plugin/mdt-deployment/images/16x16/logo_mdt.png";
+        }
+    }
+
     @Override
     public String getIconFileName() {
         updateStatusIfNeeded();
