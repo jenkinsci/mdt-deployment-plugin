@@ -146,22 +146,11 @@ public class MdtPublishAction extends Notifier {
     }
 
     private Run.Artifact findArtifact(Run.Artifact deployFileArtifact, String relativeNameFromDeployFile,HashMap<String,Run.Artifact> sortedArtifacts){
-        Path  pathFromDeployFile = Paths.get(relativeNameFromDeployFile);
-        if (pathFromDeployFile.isAbsolute()){
-            //find artifact by full path
-            for (Run.Artifact artifact :  sortedArtifacts.values()) {
-                if (artifact.getFile().getAbsolutePath() == pathFromDeployFile.toString()) {
-                    return artifact;
-                }
-            }
-            return null;
-        }else {
             relativeNameFromDeployFile = normalizePath(relativeNameFromDeployFile);
             //compute artifact 'full' relative path
             String relativePath = Paths.get(deployFileArtifact.relativePath).resolveSibling(relativeNameFromDeployFile).toString();
             LOGGER.log(Level.ALL,"find artifact "+relativePath);
             return  sortedArtifacts.get(relativePath);
-        }
     }
 
     private boolean deleteArtifact(Run.Artifact artifact,JSONObject jsonInfo,boolean latest,TaskListener listener){
