@@ -38,16 +38,16 @@ import org.kohsuke.stapler.StaplerResponse;
 /**
  * Created by rgroult on 02/05/16.
  */
-public class MdtBuildAction implements BuildBadgeAction {
+public class MdtBuildAction implements Action {
     public enum Status {
         NEW,
         SUCCESS,
         FAILED
     }
 
-    private String mdtServer;
-    private String apiKey;
-    private String deployArtifactFilename;
+    //private String mdtServer;
+    /*private String apiKey;
+    private String deployArtifactFilename;*/
     private AbstractBuild<?, ?> build;
     private FutureTask<Boolean> currentDeployTask;
     private StringWriter logWriter;
@@ -57,29 +57,13 @@ public class MdtBuildAction implements BuildBadgeAction {
     MdtBuildAction(final AbstractBuild<?, ?> build)
     {
         this.build = build;
-        GlobalConfigurationMdtDeploy globalConfig = GlobalConfigurationMdtDeploy.get();
+       /* GlobalConfigurationMdtDeploy globalConfig = GlobalConfigurationMdtDeploy.get();
         this.mdtServer = globalConfig.getUrl();
         JobPropertyImpl pp = (JobPropertyImpl) build.getProject().getProperty(JobPropertyImpl.class);
         this.apiKey = pp.apiKey;
-        this.deployArtifactFilename = pp.deployFile;
+        this.deployArtifactFilename = pp.deployFile;*/
         this.logWriter =  new StringWriter();
         this.status = Status.NEW;
-    }
-
-    public boolean hasDeployed(){
-        return status!=Status.NEW;
-    }
-
-    public String getBadgeIconFileName() {
-        updateStatusIfNeeded();
-        switch (status){
-            case SUCCESS:
-                return "/plugin/mdt-deployment/images/16*16/logo_mdt_success.png";
-            case FAILED:
-                return "/plugin/mdt-deployment/images/16*16/logo_mdt_failed.png";
-            default:
-                return "/plugin/mdt-deployment/images/16*16/logo_mdt.png";
-        }
     }
 
     @Override
@@ -132,7 +116,8 @@ public class MdtBuildAction implements BuildBadgeAction {
     }
 
     public String getMdtServer(){
-        return mdtServer;
+        GlobalConfigurationMdtDeploy globalConfig = GlobalConfigurationMdtDeploy.get();
+        return globalConfig.getUrl();
     }
 
     public int getBuildNumber() {
@@ -210,7 +195,7 @@ public class MdtBuildAction implements BuildBadgeAction {
         logWriter.getBuffer().setLength(0);
         status = Status.NEW;
         ExecutorService executor = Executors.newFixedThreadPool(1);
-        this.currentDeployTask = new FutureTask<Boolean>(new DeployTask(mdtServer,apiKey,deployArtifactFilename,build,actionListener,this));
+        this.currentDeployTask = new FutureTask<Boolean>(new DeployTask(build,actionListener,this));
         actionListener.getLogger().println("<b>Starting Deploy ...</b>");
         executor.execute(this.currentDeployTask);
 
@@ -229,28 +214,31 @@ public class MdtBuildAction implements BuildBadgeAction {
     private static final Logger LOGGER = Logger.getLogger(MdtBuildAction.class.getName());
 
     static public final class  DeployTask implements  Callable<Boolean> {
-        String mdtServer;
+       /* String mdtServer;
         String apiKey;
-        String deployArtifactFilename;
+        String deployArtifactFilename;*/
         AbstractBuild<?, ?> build;
         TaskListener actionListener;
         List<Run<?,?>.Artifact> artifacts;
         MdtBuildAction parent;
+        private MdtPublishAction publishAction;
 
-        public DeployTask(String mdtServer,String apiKey, String deployArtifactFilename, AbstractBuild<?, ?> build,TaskListener listener,MdtBuildAction parent){
-            this.build = build;
-            this.mdtServer = mdtServer;
+        public DeployTask(AbstractBuild<?, ?> build,TaskListener listener,MdtBuildAction parent){
+           /* this.build = build;
+            this.mdtServer = mdtServer;*/
             this.actionListener = listener;
             this.parent = parent;
-            this.apiKey = apiKey;
-            this.deployArtifactFilename = deployArtifactFilename;
+          /*  this.apiKey = apiKey;
+            this.deployArtifactFilename = deployArtifactFilename;*/
             artifacts = (List<Run<? , ?>.Artifact>) build.getArtifacts();
+            publishAction = new MdtPublishAction(false);
+            publishAction.configureDeployInfos((JobPropertyImpl) build.getProject().getProperty(JobPropertyImpl.class));
         }
 
         public Boolean call() {
-            final MdtPublishAction publishAction = new MdtPublishAction(false);
+           // final MdtPublishAction publishAction = new MdtPublishAction(false);
             //LOGGER.log(Level.SEVERE,"start Call");
-            Boolean result =  publishAction.performDeploy(mdtServer,apiKey,deployArtifactFilename,artifacts,actionListener);
+            Boolean result =  publishAction.performDeploy(artifacts,actionListener);
             //LOGGER.log(Level.SEVERE,"End Call");
             actionListener.getLogger().flush();
             if (result){

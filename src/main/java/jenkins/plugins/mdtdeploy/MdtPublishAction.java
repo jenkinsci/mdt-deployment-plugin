@@ -1,6 +1,7 @@
 package jenkins.plugins.mdtdeploy;
 
 import com.squareup.okhttp.*;
+import jenkins.plugins.mdtdeploy.util.SSLSocketFactoryManager;
 import org.apache.commons.lang.NotImplementedException;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -20,10 +21,12 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import hudson.ProxyConfiguration;
+import java.net.Proxy;
+import jenkins.model.Jenkins;
 
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -33,8 +36,11 @@ import java.nio.file.Paths;
 
 @SuppressWarnings("UnusedDeclaration") // This class will be loaded using its Descriptor.
 public class MdtPublishAction extends Notifier {
-    private static final Result RESULT_MUST_BE_AT_LEAST = Result.UNSTABLE;
-    public boolean deployOnLatest;
+    private boolean deployOnLatest;
+    private GlobalConfigurationMdtDeploy  globalConfig;
+    private transient String deployFilePath;
+    private transient String apiKey;
+    private transient String mdtServerHostname;
 
     public boolean getDeployOnLatest(){
         return deployOnLatest;
@@ -42,31 +48,46 @@ public class MdtPublishAction extends Notifier {
 
     @DataBoundConstructor
     public MdtPublishAction(boolean deployOnLatest) {
-       // this(owner);
         this.deployOnLatest = deployOnLatest;
+        globalConfig = GlobalConfigurationMdtDeploy.get();
         LOGGER.log(Level.ALL,"MdtPublishAction");
     }
 
-    public boolean performDeploy(String mdtServerHostname,String apiKey,String deployFilename,List<Run<? , ?>.Artifact> artifacts,TaskListener listener){
-        if (mdtServerHostname == null || mdtServerHostname.length() == 0){
+    public void configureDeployInfos(JobPropertyImpl pp){
+        if (pp!=null){
+            apiKey = pp.apiKey;
+            deployFilePath = pp.deployFile;
+        }
+    }
+
+
+    public boolean performDeploy(List<Run<? , ?>.Artifact> artifacts,TaskListener listener){
+        mdtServerHostname = globalConfig.getUrl();
+        mdtServerHostname = mdtServerHostname == null ? "" : mdtServerHostname.trim();
+
+        apiKey = apiKey == null ? "" : apiKey.trim();
+        deployFilePath = deployFilePath == null ? "" : deployFilePath.trim();
+
+        if (mdtServerHostname.isEmpty()){
             listener.getLogger().println("MDT Deploy: MDT server not set, check your config !");
             return  false;
         }
-        if (apiKey == null || apiKey.length() == 0){
+        if (apiKey.isEmpty()){
             listener.getLogger().println("MDT Deploy: API key, check your config !");
             return  false;
         }
-        if (deployFilename == null || deployFilename.length() == 0){
+        if ( deployFilePath.isEmpty()){
             listener.getLogger().println("MDT Deploy: Deployment json file, check your config !");
             return  false;
         }
 
         boolean latest = deployOnLatest;
+        String deployFilename = Paths.get(deployFilePath).toString();
 
         //sort artifact by path
         HashMap<String,Run.Artifact> sortedArtifact = new HashMap<String,Run.Artifact>();
         for (Run.Artifact artifact :  artifacts) {
-            sortedArtifact.put(artifact.relativePath,artifact);
+            sortedArtifact.put(Paths.get(artifact.relativePath).toString(),artifact);
         }
 
         //load deploy file
@@ -87,14 +108,14 @@ public class MdtPublishAction extends Notifier {
             JSONArray jsonArray = (JSONArray)obj;
             for (Object object :  jsonArray) {
                 JSONObject jsonObject = (JSONObject)object;
-                Run.Artifact artifact = findArtifact(jsonFile,jsonObject.get("file").toString(),sortedArtifact);
+                Run.Artifact artifact = findArtifact(jsonFile,Paths.get(jsonObject.get("file").toString()).toString(),sortedArtifact);
                 if (artifact !=null){
-                    if(!deleteArtifact(artifact,jsonObject,apiKey,mdtServerHostname,latest,listener)){
+                    if(!deleteArtifact(artifact,jsonObject,latest,listener)){
                         listener.getLogger().println("Error deploying artifact "+jsonObject.get("file")+". Aborting!");
                         return false;
                     }
 
-                    if(!sendArtifact(artifact,jsonObject,apiKey,mdtServerHostname,latest,listener)){
+                    if(!sendArtifact(artifact,jsonObject,latest,listener)){
                         listener.getLogger().println("Error deploying artifact "+jsonObject.get("file")+". Aborting!");
                         return false;
                     }else {
@@ -115,20 +136,15 @@ public class MdtPublishAction extends Notifier {
     @SuppressWarnings({"unchecked", "deprecation"})
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
-        final Result buildResult = build.getResult();
-        if (buildResult != null && buildResult.isWorseThan(RESULT_MUST_BE_AT_LEAST)) {
-            listener.getLogger().println("build status MUST be as Least UNSTABLE !");
-            return true;
-        }
-
+        configureDeployInfos((JobPropertyImpl) build.getProject().getProperty(JobPropertyImpl.class));
        /* Descriptor descriptor = getDescriptor();
 
         String mdtServerHostname = descriptor.url;*/
         boolean latest = deployOnLatest;
-        String apiKey = null;
+    /*    String apiKey = null;
         String deployFile = null;
 
-        JobPropertyImpl pp = (JobPropertyImpl) build.getProject().getProperty(JobPropertyImpl.class);
+       JobPropertyImpl pp = (JobPropertyImpl) build.getProject().getProperty(JobPropertyImpl.class);
 
         if (pp!=null){
             apiKey = pp.apiKey;
@@ -136,8 +152,9 @@ public class MdtPublishAction extends Notifier {
         }
         GlobalConfigurationMdtDeploy globalConfig = GlobalConfigurationMdtDeploy.get();
         String mdtServerHostname = globalConfig.getUrl();
+        boolean checkSSL = globalConfig.getDisableCheckSSL();*/
 
-        return performDeploy(mdtServerHostname,apiKey,deployFile,build.getArtifacts(),listener);
+        return performDeploy(build.getArtifacts(),listener);
     }
 
     private Run.Artifact findArtifact(Run.Artifact deployFileArtifact, String relativeNameFromDeployFile,HashMap<String,Run.Artifact> sortedArtifacts){
@@ -147,9 +164,9 @@ public class MdtPublishAction extends Notifier {
         return  sortedArtifacts.get(relativePath);
     }
 
-    private boolean deleteArtifact(Run.Artifact artifact,JSONObject jsonInfo,String apiKey,String mdtServer,boolean latest,TaskListener listener){
+    private boolean deleteArtifact(Run.Artifact artifact,JSONObject jsonInfo,boolean latest,TaskListener listener){
         try {
-            String url = mdtServer;
+            String url = mdtServerHostname;
             if (latest){
                 url+= "/api/in/v1/artifacts/"+apiKey+"/last/"+ jsonInfo.get("name");
             }else {
@@ -162,9 +179,9 @@ public class MdtPublishAction extends Notifier {
         return false;
     }
 
-    private boolean sendArtifact(Run.Artifact artifact,JSONObject jsonInfo,String apiKey,String mdtServer,boolean latest,TaskListener listener){
+    private boolean sendArtifact(Run.Artifact artifact,JSONObject jsonInfo,boolean latest,TaskListener listener){
         try {
-            String url = mdtServer;
+            String url = mdtServerHostname;
             if (latest){
                 url+= "/api/in/v1/artifacts/"+apiKey+"/last/"+ jsonInfo.get("name");
             }else {
@@ -184,10 +201,21 @@ public class MdtPublishAction extends Notifier {
         return false;
     }
 
+
     private boolean sendRequest(String url,String method,MultipartBuilder multipart,List<Integer> acceptedResturnCode,TaskListener listener) throws IOException{
         OkHttpClient client = new OkHttpClient();
+        ProxyConfiguration proxyConfig = Jenkins.getInstance().proxy;
+        if (proxyConfig != null){
+            Proxy proxy =  proxyConfig.createProxy(url);
+            client.setProxy(proxy);
+        }
         client.setConnectTimeout(30, TimeUnit.SECONDS);
         client.setReadTimeout(60, TimeUnit.SECONDS);
+        boolean sslCheck = globalConfig.getDisableCheckSSL();
+        if (sslCheck){
+            client.setHostnameVerifier(SSLSocketFactoryManager.createNullHostnameVerifier());
+            client.setSslSocketFactory(SSLSocketFactoryManager.createDefaultSslSocketFactory());
+        }
 
         Request.Builder builder = new Request.Builder();
         builder.url(url);

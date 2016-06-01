@@ -11,6 +11,8 @@ import org.kohsuke.stapler.StaplerRequest;
 @Extension
 public class GlobalConfigurationMdtDeploy extends GlobalConfiguration{
     private String url;
+    private boolean disableCheckSSL;
+
     public GlobalConfigurationMdtDeploy() {
         load();
     }
@@ -18,9 +20,8 @@ public class GlobalConfigurationMdtDeploy extends GlobalConfiguration{
     @Override
     public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
         req.bindJSON(this, json.getJSONObject("mdt-deploy"));
-        //check if url ended by '/'
-        if (url.length() > 1 && url.charAt(url.length()-1) == '/'){
-            //remove it
+        //remove last "/" if host ended by it
+        if (url != null && url.endsWith("/")){
             url = url.substring(0,url.length()-1);
         }
         save();
@@ -37,5 +38,13 @@ public class GlobalConfigurationMdtDeploy extends GlobalConfiguration{
 
     public void setUrl(String url){
         this.url = url;
+    }
+
+    public boolean getDisableCheckSSL() {
+        return disableCheckSSL;
+    }
+
+    public void setDisableCheckSSL(boolean disableCheckSSL) {
+        this.disableCheckSSL = disableCheckSSL;
     }
 }
