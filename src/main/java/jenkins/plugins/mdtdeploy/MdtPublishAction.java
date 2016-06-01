@@ -141,7 +141,7 @@ public class MdtPublishAction extends Notifier {
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
         configureDeployInfos((JobPropertyImpl) build.getProject().getProperty(JobPropertyImpl.class));
         boolean latest = deployOnLatest;
-        
+
         return performDeploy(build.getArtifacts(),listener);
     }
 
@@ -211,7 +211,7 @@ public class MdtPublishAction extends Notifier {
         }
         client.setConnectTimeout(30, TimeUnit.SECONDS);
         client.setReadTimeout(60, TimeUnit.SECONDS);
-        boolean sslCheck = globalConfig.getDisableCheckSSL();
+        boolean sslCheck =  GlobalConfigurationMdtDeploy.get().getDisableCheckSSL();
         if (sslCheck){
             client.setHostnameVerifier(SSLSocketFactoryManager.createNullHostnameVerifier());
             client.setSslSocketFactory(SSLSocketFactoryManager.createDefaultSslSocketFactory());

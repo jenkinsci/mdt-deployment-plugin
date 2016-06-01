@@ -38,7 +38,7 @@ import org.kohsuke.stapler.StaplerResponse;
 /**
  * Created by rgroult on 02/05/16.
  */
-public class MdtBuildAction implements Action {
+public class MdtBuildAction implements BuildBadgeAction {
     public enum Status {
         NEW,
         SUCCESS,
