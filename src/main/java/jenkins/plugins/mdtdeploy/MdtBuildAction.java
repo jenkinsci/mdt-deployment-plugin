@@ -3,8 +3,6 @@ package jenkins.plugins.mdtdeploy;
 import hudson.Launcher;
 import hudson.model.*;
 
-import hudson.model.LargeText;
-
 import java.io.*;
 import java.nio.charset.Charset;
 import java.util.AbstractQueue;
